@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>José Luis Torrano</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; font-family: 'Courier New', monospace; background: #000; }
+
+    #escena-ar { 
+      width: 100vw !important; 
+      height: 100vh !important; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      z-index: 1 !important; 
+    }
+
+    #pantalla-inicio {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 50;
+    }
+
+    #matrix-canvas {
+      position: fixed; inset: 0;
+      z-index: 10; 
+      opacity: 0.12;
+      pointer-events: none;
+    }
+
+    .inicio-content {
+      position: relative; z-index: 10;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 20px;
+      text-align: center; padding: 30px;
+    }
+
+    .inicio-content h1 {
+      font-size: 20px; font-weight: 900;
+      color: #FFD700; letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .inicio-content p {
+      font-size: 13px; color: #00ff41;
+      letter-spacing: 1px; opacity: 0.8;
+    }
+
+    #btn-iniciar {
+      background: transparent;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 14px; font-weight: 700;
+      letter-spacing: 2px;
+      padding: 14px 32px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #touch-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 20; 
+      touch-action: none;
+    }
+
+    #btn-volver {
+      display: none;
+      position: fixed; bottom: 90px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9); color: #00ff41;
+      border: 2px solid #00ff41;
+      border-radius: 4px; padding: 12px 32px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer; z-index: 100;
+      white-space: nowrap;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+    #btn-volver:hover { 
+      background: rgba(0,255,65,0.15); 
+      box-shadow: 0 0 10px rgba(0,255,65,0.3);
+    }
+
+    #instruccion {
+      display: none;
+      position: fixed; top: 20px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9); color: #00ff41;
+      border: 1px solid rgba(0,255,65,0.6);
+      border-radius: 4px; padding: 10px 22px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px; font-weight: 700;
+      z-index: 100; 
+      white-space: nowrap;
+      letter-spacing: 1px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    #btns-ar {
+      display: none;
+      position: fixed;
+      bottom: 28px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      flex-direction: row;
+      gap: 10px;
+    }
+    #btns-ar.visible { display: flex; }
+
+    .btn-social {
+      display: flex; align-items: center;
+      justify-content: center; gap: 6px;
+      padding: 10px 16px; border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 1px;
+      text-decoration: none;
+      text-transform: uppercase;
+      cursor: pointer; border: none;
+    }
+    .btn-whats { background: rgba(0,0,0,0.85); border: 1px solid #25D366; color: #25D366; }
+    .btn-mail  { background: rgba(0,0,0,0.85); border: 1px solid #FFD700; color: #FFD700; }
+    .btn-save  { background: rgba(0,0,0,0.85); border: 1px solid #00ff41; color: #00ff41; }
+  </style>
+</head>
+<body>
+
+<!-- ESCENA AR - FONDO PRINCIPAL -->
+<a-scene
+  id="escena-ar"
+  embedded
+  arjs="sourceType: webcam; debugUIEnabled: false;"
+  renderer="logarithmicDepthBuffer: true; antialias: true;"
+  vr-mode-ui="enabled: false"
+  xr-session-required="false"
+>
+  <a-assets>
+    <img id="tarjeta-tex" src="yo.png" crossorigin="anonymous" />
+  </a-assets>
+  <a-entity id="marcador">
+    <a-image
+      id="plano-tarjeta"
+      src="#tarjeta-tex"
+      width="2.5"
+      height="1.8"
+      position="0 0 -3"
+      rotation="0 0 0"
+      visible="false"
+      material="transparent: true; alphaTest: 0.5;"
+    ></a-image>
+  </a-entity>
+  <a-entity camera></a-entity>
+</a-scene>
+
+<!-- CAPAS SUPERPUESTAS -->
+<canvas id="matrix-canvas"></canvas>
+
+<div id="pantalla-inicio">
+  <div class="inicio-content">
+    <h1>José Luis Torrano<br>Figueroa</h1>
+    <p style="font-size: 11px; margin: 10px 0;">Tarjeta de Contacto Aumentada</p>
+    <button id="btn-iniciar" onclick="iniciarAR()">[ Ver Tarjeta ]</button>
+  </div>
+</div>
+
+<div id="touch-overlay"></div>
+<div id="instruccion">🟢 Cargando...</div>
+
+<div id="btns-ar">
+  <a class="btn-social btn-whats"
+     href="https://wa.me/527222922887?text=Hola%20Jos%C3%A9%20Luis%2C%20vi%20tu%20tarjeta%20y%20me%20gustar%C3%ADa%20contactarte"
+     target="_blank">💬 WhatsApp</a>
+  <a class="btn-social btn-mail"
+     href="mailto:joseluistorrano@gmail.com?subject=Contacto%20desde%20tarjeta%20AR"
+     target="_blank">✉️ Correo</a>
+</div>
+
+<button id="btn-volver" onclick="volverMenu()">[ ← Volver ]</button>
+
+<script>
+  var canvas = document.getElementById('matrix-canvas');
+  var ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  var cols = Math.floor(canvas.width / 16);
+  var drops = Array(cols).fill(1);
+  var chars = 'アイウエオカキABCDEFGHIJ012345789';
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0,0,0,0.02)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#00ff41';
+    ctx.font = '14px Courier New';
+    for (var i = 0; i < drops.length; i++) {
+      ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*16, drops[i]*16);
+      if (drops[i]*16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(drawMatrix, 50);
+
+  var escalaActual = 1;
+  var anchoBase = 2.5;
+  var altoBase = 1.8;
+  var distanciaInicial = 0;
+  var panX = 0, panY = 0;
+  var panInicio = null;
+  var gestosActivos = false;
+
+  function iniciarAR() {
+    // Ocultar pantalla de inicio con transición suave
+    var pantalla = document.getElementById('pantalla-inicio');
+    pantalla.style.opacity = '0';
+    pantalla.style.transition = 'opacity 0.3s ease';
+    
+    setTimeout(function() {
+      pantalla.style.display = 'none';
+    }, 300);
+
+    var plano = document.getElementById('plano-tarjeta');
+    plano.setAttribute('visible', 'false');
+    plano.setAttribute('position', '0 0 -3');
+    escalaActual = 1; panX = 0; panY = 0;
+
+    // Cargar imagen con timestamp para evitar cache
+    var tex = document.getElementById('tarjeta-tex');
+    var imagenURL = 'yo.png?v=' + Date.now();
+    tex.src = imagenURL;
+    plano.setAttribute('material', 'src: ' + imagenURL + '; transparent: true; alphaTest: 0.5;');
+
+    document.getElementById('instruccion').style.display = 'block';
+    document.getElementById('btn-volver').style.display = 'block';
+    document.getElementById('instruccion').textContent = '🔄 Cargando tarjeta...';
+
+    setTimeout(function() {
+      plano.setAttribute('visible', 'true');
+      document.getElementById('instruccion').textContent = '🤏 Pellizca para zoom · arrastra para mover';
+      document.getElementById('touch-overlay').style.display = 'block';
+      document.getElementById('btns-ar').classList.add('visible');
+      if (!gestosActivos) { activarGestos(); gestosActivos = true; }
+    }, 600);
+  }
+
+  function volverMenu() {
+    document.getElementById('touch-overlay').style.display = 'none';
+    document.getElementById('btn-volver').style.display = 'none';
+    document.getElementById('instruccion').style.display = 'none';
+    document.getElementById('btns-ar').classList.remove('visible');
+    document.getElementById('plano-tarjeta').setAttribute('visible', 'false');
+    document.getElementById('plano-tarjeta').setAttribute('position', '0 0 -3');
+    
+    // Mostrar pantalla de inicio con transición
+    var pantalla = document.getElementById('pantalla-inicio');
+    pantalla.style.display = 'flex';
+    pantalla.style.opacity = '0';
+    setTimeout(function() {
+      pantalla.style.opacity = '1';
+      pantalla.style.transition = 'opacity 0.3s ease';
+    }, 10);
+    
+    escalaActual = 1; panX = 0; panY = 0;
+  }
+
+  function activarGestos() {
+    var overlay = document.getElementById('touch-overlay');
+    overlay.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        distanciaInicial = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      } else if (e.touches.length === 1) {
+        panInicio = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY };
+      }
+    }, { passive: true });
+
+    overlay.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      var plano = document.getElementById('plano-tarjeta');
+      if (e.touches.length === 2) {
+        var dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        var delta = dist / distanciaInicial;
+        escalaActual = Math.min(Math.max(escalaActual * delta, 0.3), 5);
+        plano.setAttribute('width', anchoBase * escalaActual);
+        plano.setAttribute('height', altoBase * escalaActual);
+        distanciaInicial = dist;
+      } else if (e.touches.length === 1 && panInicio) {
+        panX = e.touches[0].clientX - panInicio.x;
+        panY = e.touches[0].clientY - panInicio.y;
+        plano.setAttribute('position', (panX * 0.003) + ' ' + (-panY * 0.003) + ' -3');
+      }
+    }, { passive: false });
+
+    overlay.addEventListener('touchend', function(e) {
+      if (e.touches.length < 1) panInicio = null;
+    }, { passive: true });
+  }
+
+
+</script>
+
+</body>
+</html>
